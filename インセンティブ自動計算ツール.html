@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>インセンティブ自動計算ツール</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f0f7f4;
+    min-height: 100vh;
+    color: #2d3436;
+  }
+
+  header {
+    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    padding: 28px 32px;
+    color: white;
+  }
+  header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  header p  { font-size: 13px; color: #95d5b2; }
+
+  .container { max-width: 760px; margin: 32px auto; padding: 0 20px; }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  .card h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1b4332;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rules { display: flex; flex-direction: column; gap: 8px; }
+  .rule-row {
+    display: flex;
+    align-items: center;
+    background: #f0f7f4;
+    border-radius: 8px;
+    padding: 10px 14px;
+    gap: 12px;
+  }
+  .rule-dept { font-size: 13px; font-weight: 500; flex: 1; }
+  .rule-rate {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2d6a4f;
+    background: #d8f3dc;
+    padding: 3px 12px;
+    border-radius: 20px;
+  }
+
+  .dropzone {
+    border: 2px dashed #95d5b2;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f8fffe;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: #2d6a4f;
+    background: #e8f5e9;
+  }
+  .dropzone .icon { font-size: 40px; margin-bottom: 10px; }
+  .dropzone .main-text { font-size: 15px; font-weight: 700; color: #1b4332; margin-bottom: 6px; }
+  .dropzone .sub-text  { font-size: 12px; color: #636e72; }
+  .dropzone input { display: none; }
+
+  .file-selected {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #d8f3dc;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+  }
+  .file-selected .fname { font-size: 13px; font-weight: 500; color: #1b4332; flex: 1; }
+  .file-selected .fsize { font-size: 12px; color: #636e72; }
+
+  .btn-run {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #2d6a4f, #1b4332);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+  .btn-run:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .log-area {
+    background: #1b4332;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #95d5b2;
+    min-height: 80px;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.7;
+  }
+  .log-area .log-error { color: #ff7675; }
+  .log-area .log-success { color: #55efc4; font-weight: bold; }
+
+  .results { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f0f7f4;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .result-store { font-size: 13px; font-weight: 700; color: #1b4332; }
+  .result-meta  { font-size: 12px; color: #636e72; margin-top: 2px; }
+  .btn-dl {
+    background: #2d6a4f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-dl:hover { background: #1b4332; }
+  .btn-dl-all {
+    width: 100%;
+    padding: 12px;
+    background: #1b4332;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    margin-top: 8px;
+  }
+  .btn-dl-all:hover { opacity: 0.9; }
+
+  .hidden { display: none; }
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .notice {
+    background: #e8f4fd;
+    border-left: 4px solid #3498db;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #2c3e50;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💰 インセンティブ自動計算ツール</h1>
+  <p>スマレジ取引履歴CSV → 店舗別インセンティブシート自動生成</p>
+</header>
+
+<div class="container">
+
+  <!-- 計算ルール -->
+  <div class="card">
+    <h2>📋 計算ルール</h2>
+    <div class="rules">
+      <div class="rule-row">
+        <span class="rule-dept">CBDAYS</span>
+        <span class="rule-rate">10%</span>
+      </div>
+      <div class="rule-row">
+        <span class="rule-dept">(自)使い捨て</span>
+        <span class="rule-rate">1%</span>
+      </div>
+      <div class="rule-row">
+        <span class="rule-dept">(自)カートリッジ</span>
+        <span class="rule-rate">1%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV選択 -->
+  <div class="card">
+    <h2>📂 スマレジ 取引履歴CSV を選択</h2>
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('csvInput').click()">
+      <div class="icon">📄</div>
+      <div class="main-text">CSVファイルをここにドラッグ＆ドロップ</div>
+      <div class="sub-text">またはクリックしてファイルを選択</div>
+      <input type="file" id="csvInput" accept=".csv">
+    </div>
+    <div class="file-selected hidden" id="fileInfo">
+      <span>✅</span>
+      <span class="fname" id="fileName"></span>
+      <span class="fsize" id="fileSize"></span>
+    </div>
+  </div>
+
+  <!-- 実行 -->
+  <div class="card">
+    <button class="btn-run" id="btnRun" disabled onclick="runCalc()">
+      ▶ インセンティブシートを生成
+    </button>
+    <div style="margin-top:14px;">
+      <div class="log-area" id="logArea">待機中... CSVを選択してください</div>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card hidden" id="resultCard">
+    <h2>✨ 生成完了 — ダウンロード</h2>
+    <div class="notice">
+      💡 XLSXファイルをダウンロード後、Googleドライブにアップロードすると自動でスプレッドシートに変換されます
+    </div>
+    <div class="results" id="resultList"></div>
+    <button class="btn-dl-all" onclick="downloadAll()">
+      📦 全店舗をまとめてダウンロード
+    </button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// 設定
+// ============================================================
+const INCENTIVE_RULES = {
+  'CBDAYS':         0.10,
+  '(自)使い捨て':    0.01,
+  '(自)カートリッジ': 0.01,
+};
+const STORE_NAMES = {
+  1:  '沖縄国際通り店',
+  3:  '大阪心斎橋店',
+  5:  '表参道店',
+  6:  '池袋東口店',
+  8:  '新宿歌舞伎町店',
+  9:  '渋谷神南店',
+  10: '浅草店',
+};
+
+let csvFile = null;
+let generatedFiles = [];
+
+// ============================================================
+// ファイル選択
+// ============================================================
+document.getElementById('csvInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) selectFile(f);
+});
+
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith('.csv')) selectFile(f);
+});
+
+function selectFile(f) {
+  csvFile = f;
+  document.getElementById('fileName').textContent = f.name;
+  document.getElementById('fileSize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileInfo').classList.remove('hidden');
+  document.getElementById('btnRun').disabled = false;
+  log(`📂 選択: ${f.name}`);
+}
+
+// ============================================================
+// ログ
+// ============================================================
+function log(msg, type='') {
+  const area = document.getElementById('logArea');
+  const line = document.createElement('div');
+  if (type) line.className = `log-${type}`;
+  line.textContent = msg;
+  area.appendChild(line);
+  area.scrollTop = area.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logArea').innerHTML = '';
+}
+
+// ============================================================
+// CSV解析
+// ============================================================
+function parseCSVLine(line) {
+  const vals = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else { inQ = !inQ; }
+    } else if (c === ',' && !inQ) {
+      vals.push(cur);
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  vals.push(cur);
+  return vals;
+}
+
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/);
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => row[h] = (vals[idx] || '').trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ============================================================
+// メイン処理
+// ============================================================
+async function runCalc() {
+  clearLog();
+  generatedFiles = [];
+  document.getElementById('resultCard').classList.add('hidden');
+  document.getElementById('resultList').innerHTML = '';
+  document.getElementById('btnRun').disabled = true;
+  document.getElementById('btnRun').innerHTML = '<span class="spinning">⟳</span> 計算中...';
+
+  try {
+    const text = await readFileAsText(csvFile);
+    const rows = parseCSV(text);
+    log(`📊 読込完了: ${rows.length.toLocaleString()}行`);
+
+    const cancelKey = Object.keys(rows[0]).find(k => k.includes('取消区分'));
+    const valid = rows.filter(r => String(r[cancelKey]).trim() === '0');
+    log(`✅ 有効取引: ${valid.length.toLocaleString()}件（取消除外済）`);
+
+    const dateKey = '取引日時';
+    const sampleDate = new Date(valid[0][dateKey]);
+    const year = sampleDate.getFullYear();
+    const month = sampleDate.getMonth() + 1;
+    const monthStr = `${year}年${String(month).padStart(2,'0')}月`;
+    log(`📅 対象期間: ${monthStr}`);
+
+    valid.forEach(r => {
+      const d = new Date(r[dateKey]);
+      r._day   = d.getDate();
+      r._year  = d.getFullYear();
+      r._month = d.getMonth() + 1;
+    });
+
+    const storeIds = [...new Set(valid.map(r => parseInt(r['店舗ID'])))].sort((a,b)=>a-b);
+    log(`🏪 検出店舗数: ${storeIds.length}店舗`);
+    log('');
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    for (const storeId of storeIds) {
+      const storeName = STORE_NAMES[storeId] || `店舗${storeId}`;
+      const storeRows = valid.filter(r => parseInt(r['店舗ID']) === storeId);
+      const targetRows = storeRows.filter(r => INCENTIVE_RULES[r['部門名']] !== undefined);
+
+      if (targetRows.length === 0) {
+        log(`  ⚠ ${storeName}: インセンティブ対象なし`);
+        continue;
+      }
+
+      const staffs = [...new Set(targetRows.map(r => r['スタッフ名']).filter(Boolean))].sort();
+      const wb = buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, monthStr);
+
+      let totalInsen = 0;
+      for (const [dept, rate] of Object.entries(INCENTIVE_RULES)) {
+        const deptRows = targetRows.filter(r => r['部門名'] === dept);
+        totalInsen += Math.round(deptRows.reduce((s, r) => s + parseFloat(r['値引き後計']||0), 0) * rate);
+      }
+
+      const filename = `インセンティブ_${storeName}_${monthStr}.xlsx`;
+      generatedFiles.push({ wb, filename, storeName, staffCount: staffs.length, totalInsen });
+      log(`  ✅ ${storeName}: ${staffs.length}名 / 合計¥${totalInsen.toLocaleString()}`);
+    }
+
+    if (generatedFiles.length > 0) {
+      log('');
+      log(`✨ ${generatedFiles.length}店舗のシートを生成しました！`, 'success');
+      showResults();
+    }
+
+  } catch(e) {
+    log(`❌ エラー: ${e.message}`, 'error');
+    console.error(e);
+  }
+
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnRun').innerHTML = '▶ インセンティブシートを生成';
+}
+
+// ============================================================
+// Excelワークブック生成
+// ============================================================
+function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, monthStr) {
+  const wb = XLSX.utils.book_new();
+
+  for (const staff of staffs) {
+    const staffRows = targetRows.filter(r => r['スタッフ名'] === staff);
+    const wsData = [];
+
+    wsData.push([`販売インセンティブ管理表　${storeName}　${monthStr}　${staff}`]);
+
+    const header = ['部門', '商品名', '単価'];
+    for (let d = 1; d <= daysInMonth; d++) header.push(d);
+    header.push('月計(個)', 'インセン');
+    wsData.push(header);
+
+    const sectionSubtotals = {};
+
+    for (const [dept, rate] of Object.entries(INCENTIVE_RULES)) {
+      const deptRows = staffRows.filter(r => r['部門名'] === dept);
+      if (deptRows.length === 0) continue;
+
+      const label = dept === 'CBDAYS' ? 'CBDAYS (10%)' : `${dept} (1%)`;
+      const products = [...new Set(deptRows.map(r => r['商品名']))].sort();
+      const productEndRows = [];
+
+      for (const prod of products) {
+        const prodRows = deptRows.filter(r => r['商品名'] === prod);
+        const price = parseFloat(prodRows[0]['販売単価']) || 0;
+        const row = [label, prod, price];
+
+        let totalQty = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const qty = prodRows.filter(r => r._day === d).reduce((s,r) => s + parseFloat(r['数量']||0), 0);
+          row.push(qty > 0 ? qty : null);
+          totalQty += qty;
+        }
+        row.push(totalQty);
+        row.push(Math.round(totalQty * price * rate));
+        wsData.push(row);
+        productEndRows.push(wsData.length);
+      }
+
+      const subtotalInsen = productEndRows.reduce((s, r) => {
+        return s + (wsData[r-1][wsData[r-1].length-1] || 0);
+      }, 0);
+      wsData.push([`${label} 小計`, '', '', ...Array(daysInMonth).fill(null), null, subtotalInsen]);
+      sectionSubtotals[dept] = wsData.length;
+    }
+
+    const grandTotal = Object.values(sectionSubtotals).reduce((s, r) => s + (wsData[r-1][wsData[r-1].length-1] || 0), 0);
+    wsData.push(['当月インセンティブ合計', ...Array(daysInMonth + 3).fill(null), grandTotal]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    const colWidths = [{ wch: 14 }, { wch: 38 }, { wch: 8 }];
+    for (let d = 0; d < daysInMonth; d++) colWidths.push({ wch: 4 });
+    colWidths.push({ wch: 8 }, { wch: 10 });
+    ws['!cols'] = colWidths;
+    ws['!rows'] = [{ hpt: 28 }, { hpt: 22 }];
+
+    const sheetName = staff.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+
+  return wb;
+}
+
+// ============================================================
+// 結果表示・ダウンロード
+// ============================================================
+function showResults() {
+  const card = document.getElementById('resultCard');
+  const list = document.getElementById('resultList');
+  card.classList.remove('hidden');
+  list.innerHTML = '';
+
+  generatedFiles.forEach((f, idx) => {
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.innerHTML = `
+      <div>
+        <div class="result-store">🏪 ${f.storeName}</div>
+        <div class="result-meta">${f.staffCount}名 ／ 合計インセン ¥${f.totalInsen.toLocaleString()}</div>
+      </div>
+      <button class="btn-dl" onclick="downloadOne(${idx})">⬇️ ダウンロード</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function downloadOne(idx) {
+  const { wb, filename } = generatedFiles[idx];
+  XLSX.writeFile(wb, filename);
+  log(`⬇️ ダウンロード: ${filename}`, 'success');
+}
+
+function downloadAll() {
+  generatedFiles.forEach((_, idx) => downloadOne(idx));
+  log(`📦 全${generatedFiles.length}店舗をダウンロードしました！`, 'success');
+}
+
+// ============================================================
+// ファイル読み込み（Shift-JIS対応）
+// ============================================================
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    try {
+      reader.readAsText(file, 'Shift-JIS');
+    } catch {
+      reader.readAsText(file, 'UTF-8');
+    }
+  });
+}
+</script>
+</body>
+</html>
