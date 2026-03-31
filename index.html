@@ -457,22 +457,29 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
       const productKeys = [];
       const seen = new Map();
       for (const r of deptRows) {
-        const key = r['商品名'] + '__' + r['販売単価'];
-        if (!seen.has(key)) { seen.set(key, true); productKeys.push({ name: r['商品名'], price: parseFloat(r['販売単価'])||0 }); }
+        const unitDisc = parseFloat(r['単品割引'] || 0);
+        const subtotalDisc = parseFloat(r['小計割引率'] || 0);
+        const key = r['商品名'] + '__' + r['販売単価'] + '__' + unitDisc + '__' + subtotalDisc;
+        if (!seen.has(key)) { seen.set(key, true); productKeys.push({ name: r['商品名'], price: parseFloat(r['販売単価'])||0, unitDisc, subtotalDisc }); }
       }
-      productKeys.sort((a,b) => a.name.localeCompare(b.name, 'ja') || a.price - b.price);
+      productKeys.sort((a,b) => a.name.localeCompare(b.name, 'ja') || a.price - b.price || a.unitDisc - b.unitDisc || a.subtotalDisc - b.subtotalDisc);
       const productEndRows = [];
 
-      for (const { name: prod, price } of productKeys) {
-        const prodRows = deptRows.filter(r => r['商品名'] === prod && (parseFloat(r['販売単価'])||0) === price);
-        // 単品割引列には割引率(%)が直接入っている
-        const discount = parseFloat(prodRows[0]['単品割引'] || 0);
+      for (const { name: prod, price, unitDisc, subtotalDisc } of productKeys) {
+        const prodRows = deptRows.filter(r =>
+          r['商品名'] === prod &&
+          (parseFloat(r['販売単価'])||0) === price &&
+          (parseFloat(r['単品割引']||0)) === unitDisc &&
+          (parseFloat(r['小計割引率']||0)) === subtotalDisc
+        );
+        const totalDisc = unitDisc > 0 ? unitDisc : subtotalDisc;
         let discLabel = '';
-        if (discount > 0) {
-          discLabel = `（${Math.round(discount)}%OFF）`;
+        if (totalDisc > 0) {
+          discLabel = `（${Math.round(totalDisc)}%OFF）`;
         }
         const displayName = prod + discLabel;
-        const row = [label, displayName, price];
+        const actualPrice = totalDisc > 0 ? Math.round(price * (1 - totalDisc/100)) : price;
+        const row = [label, displayName, actualPrice];
 
         let totalQty = 0;
         let totalSales = 0;
@@ -481,7 +488,11 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
           const qty = dayRows.reduce((s,r) => s + parseFloat(r['数量']||0), 0);
           row.push(qty > 0 ? qty : null);
           totalQty += qty;
-          totalSales += dayRows.reduce((s,r) => s + parseFloat(r['値引き後計']||0), 0);
+          totalSales += dayRows.reduce((s,r) => {
+            const base = parseFloat(r['値引き後計']||0);
+            const discRate = parseFloat(r['小計割引率']||0);
+            return s + (discRate > 0 ? base * (1 - discRate/100) : base);
+          }, 0);
         }
         row.push(totalQty);
         row.push(Math.round(totalSales * rate));
