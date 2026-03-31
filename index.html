@@ -465,7 +465,14 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
 
       for (const { name: prod, price } of productKeys) {
         const prodRows = deptRows.filter(r => r['商品名'] === prod && (parseFloat(r['販売単価'])||0) === price);
-        const row = [label, prod, price];
+        // 単品割引列には割引率(%)が直接入っている
+        const discount = parseFloat(prodRows[0]['単品割引'] || 0);
+        let discLabel = '';
+        if (discount > 0) {
+          discLabel = `（${Math.round(discount)}%OFF）`;
+        }
+        const displayName = prod + discLabel;
+        const row = [label, displayName, price];
 
         let totalQty = 0;
         let totalSales = 0;
