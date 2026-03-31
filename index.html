@@ -184,7 +184,7 @@
 
 <header>
   <h1>💰 インセンティブ自動計算ツール</h1>
-  <p>スマレジ取引履歴CSV → 店舗別インセンティブシート自動生成</p>
+  <p>スマレジ取引履歴CSV → 店舗別インセンティブシート自動生成（割引後の実売金額ベース）</p>
 </header>
 
 <div class="container">
@@ -407,6 +407,7 @@ async function runCalc() {
         const deptRows = targetRows.filter(r => r['部門名'] === dept);
         totalInsen += Math.round(deptRows.reduce((s, r) => s + parseFloat(r['値引き後計']||0), 0) * rate);
       }
+      // ※ 値引き後計（実際の販売金額）をベースに計算
 
       const filename = `インセンティブ_${storeName}_${monthStr}.xlsx`;
       generatedFiles.push({ wb, filename, storeName, staffCount: staffs.length, totalInsen });
@@ -442,7 +443,7 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
 
     const header = ['部門', '商品名', '単価'];
     for (let d = 1; d <= daysInMonth; d++) header.push(d);
-    header.push('月計(個)', 'インセン');
+    header.push('月計(売上)', 'インセン');
     wsData.push(header);
 
     const sectionSubtotals = {};
@@ -460,14 +461,14 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
         const price = parseFloat(prodRows[0]['販売単価']) || 0;
         const row = [label, prod, price];
 
-        let totalQty = 0;
+        let totalSales = 0;
         for (let d = 1; d <= daysInMonth; d++) {
-          const qty = prodRows.filter(r => r._day === d).reduce((s,r) => s + parseFloat(r['数量']||0), 0);
-          row.push(qty > 0 ? qty : null);
-          totalQty += qty;
+          const daySales = prodRows.filter(r => r._day === d).reduce((s,r) => s + parseFloat(r['値引き後計']||0), 0);
+          row.push(daySales > 0 ? daySales : null);
+          totalSales += daySales;
         }
-        row.push(totalQty);
-        row.push(Math.round(totalQty * price * rate));
+        row.push(totalSales);
+        row.push(Math.round(totalSales * rate));
         wsData.push(row);
         productEndRows.push(wsData.length);
       }
