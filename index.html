@@ -453,12 +453,18 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
       if (deptRows.length === 0) continue;
 
       const label = dept === 'CBDAYS' ? 'CBDAYS (10%)' : `${dept} (1%)`;
-      const products = [...new Set(deptRows.map(r => r['商品名']))].sort();
+      // 商品名＋販売単価の組み合わせでグループ化（割引違いを別行で表示）
+      const productKeys = [];
+      const seen = new Map();
+      for (const r of deptRows) {
+        const key = r['商品名'] + '__' + r['販売単価'];
+        if (!seen.has(key)) { seen.set(key, true); productKeys.push({ name: r['商品名'], price: parseFloat(r['販売単価'])||0 }); }
+      }
+      productKeys.sort((a,b) => a.name.localeCompare(b.name, 'ja') || a.price - b.price);
       const productEndRows = [];
 
-      for (const prod of products) {
-        const prodRows = deptRows.filter(r => r['商品名'] === prod);
-        const price = parseFloat(prodRows[0]['販売単価']) || 0;
+      for (const { name: prod, price } of productKeys) {
+        const prodRows = deptRows.filter(r => r['商品名'] === prod && (parseFloat(r['販売単価'])||0) === price);
         const row = [label, prod, price];
 
         let totalQty = 0;
