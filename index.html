@@ -258,14 +258,17 @@ const INCENTIVE_RULES = {
   '(自)カートリッジ': 0.01,
 };
 const STORE_NAMES = {
-  1:  '沖縄国際通り店',
-  3:  '大阪心斎橋店',
-  5:  '表参道店',
-  6:  '池袋東口店',
-  8:  '新宿歌舞伎町店',
-  9:  '渋谷神南店',
-  10: '浅草店',
+  1:  'I'm FREE 沖縄国際通り店',
+  3:  'I'm FREE 大阪心斎橋店',
+  5:  'I'm FREE 表参道店',
+  6:  'I'm FREE 池袋東口店',
+  8:  'I'm FREE 新宿歌舞伎町店',
+  9:  'I'm FREE 渋谷神南店',
+  10: 'I'm FREE 浅草店',
 };
+// 京都店（qolsアカウント）は店舗ID=1のみのCSV → 自動判定
+const KYOTO_STORE_ID = 1;
+const KYOTO_STORE_NAME = 'ADD CBD KYOTO with 孫GONG';
 
 let csvFile = null;
 let generatedFiles = [];
@@ -397,7 +400,9 @@ async function runCalc() {
     const daysInMonth = new Date(year, month, 0).getDate();
 
     for (const storeId of storeIds) {
-      const storeName = STORE_NAMES[storeId] || `店舗${storeId}`;
+      // 店舗ID=1かつCSV内の店舗が1種類のみ → 京都店と判定
+      const isKyoto = storeId === KYOTO_STORE_ID && storeIds.length === 1;
+      const storeName = isKyoto ? KYOTO_STORE_NAME : (STORE_NAMES[storeId] || `店舗${storeId}`);
       const storeRows = valid.filter(r => parseInt(r['店舗ID']) === storeId);
       const targetRows = storeRows.filter(r => INCENTIVE_RULES[r['部門名']] !== undefined);
 
