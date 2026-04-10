@@ -198,11 +198,11 @@
         <span class="rule-rate">10%</span>
       </div>
       <div class="rule-row">
-        <span class="rule-dept">(自)使い捨て</span>
+        <span class="rule-dept">(自)使い捨て / リキッド・使い捨て</span>
         <span class="rule-rate">1%</span>
       </div>
       <div class="rule-row">
-        <span class="rule-dept">(自)カートリッジ</span>
+        <span class="rule-dept">(自)カートリッジ / リキッド・カートリッジ</span>
         <span class="rule-rate">1%</span>
       </div>
     </div>
@@ -253,9 +253,12 @@
 // 設定
 // ============================================================
 const INCENTIVE_RULES = {
-  'CBDAYS':         0.10,
-  '(自)使い捨て':    0.01,
-  '(自)カートリッジ': 0.01,
+  'CBDAYS':                    0.10,
+  '(自)使い捨て':               0.01,
+  '(自)カートリッジ':            0.01,
+  '（自)カートリッジ':           0.01,  // 京都店（全角カッコ）
+  '（自)リキッド・カートリッジ':   0.01,  // 京都店
+  '(自)リキッド・使い捨て':       0.01,  // 京都店
 };
 const STORE_NAMES = {
   1:  "I'm FREE 沖縄国際通り店",
