@@ -520,7 +520,7 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
     }
 
     const grandTotal = Object.values(sectionSubtotals).reduce((s, r) => s + (wsData[r-1][wsData[r-1].length-1] || 0), 0);
-    wsData.push(['当月インセンティブ合計', ...Array(daysInMonth + 3).fill(null), grandTotal]);
+    wsData.push(['当月インセンティブ合計', ...Array(daysInMonth + 2).fill(null), grandTotal]);
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
