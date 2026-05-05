@@ -537,7 +537,8 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
     ws['!cols'] = colWidths;
     ws['!rows'] = [{ hpt: 28 }, { hpt: 22 }];
 
-    const sheetName = staff.substring(0, 31);
+    // シート名から使用不可文字（アポストロフィなど）を除去
+    const sheetName = staff.replace(/['\/\\\[\]\*\?:]/g, '').substring(0, 31);
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
   }
 
