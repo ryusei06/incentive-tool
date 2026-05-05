@@ -198,11 +198,11 @@
         <span class="rule-rate">10%</span>
       </div>
       <div class="rule-row">
-        <span class="rule-dept">(自)使い捨て / リキッド・使い捨て</span>
+        <span class="rule-dept">(自)使い捨て</span>
         <span class="rule-rate">1%</span>
       </div>
       <div class="rule-row">
-        <span class="rule-dept">(自)カートリッジ / リキッド・カートリッジ</span>
+        <span class="rule-dept">(自)カートリッジ</span>
         <span class="rule-rate">1%</span>
       </div>
     </div>
@@ -256,10 +256,13 @@ const INCENTIVE_RULES = {
   'CBDAYS':                    0.10,
   '(自)使い捨て':               0.01,
   '(自)カートリッジ':            0.01,
-  '（自)カートリッジ':           0.01,  // 京都店（全角カッコ）
-  '（自)リキッド・カートリッジ':   0.01,  // 京都店
-  '(自)リキッド・使い捨て':       0.01,  // 京都店
+  '（自)カートリッジ':           0.01,
+  '（自)リキッド・カートリッジ':   0.01,
+  '(自)リキッド・使い捨て':       0.01,
 };
+const EXCLUDED_PRODUCTS = [
+  '【Night】CRDB',
+];
 const STORE_NAMES = {
   1:  "I'm FREE 沖縄国際通り店",
   3:  "I'm FREE 大阪心斎橋店",
@@ -269,7 +272,6 @@ const STORE_NAMES = {
   9:  "I'm FREE 渋谷神南店",
   10: "I'm FREE 浅草店",
 };
-// 京都店（qolsアカウント）は店舗ID=1のみのCSV → 自動判定
 const KYOTO_STORE_ID = 1;
 const KYOTO_STORE_NAME = 'ADD CBD KYOTO with 孫GONG';
 
@@ -374,13 +376,14 @@ async function runCalc() {
     const cancelKey = Object.keys(rows[0]).find(k => k.includes('取消区分'));
     const detailKey = Object.keys(rows[0]).find(k => k.includes('取引明細区分'));
     const valid = rows.filter(r => {
-      const isCancelled = String(r[cancelKey]).trim() !== '0'; // 取消
-      const isReturn    = String(r[detailKey]).trim() === '2'; // 返品
-      return !isCancelled && !isReturn;
+      const isCancelled = String(r[cancelKey]).trim() !== '0';
+      const isReturn    = detailKey && String(r[detailKey]).trim() === '2';
+      const isExcluded  = EXCLUDED_PRODUCTS.some(ex => (r['商品名'] || '').includes(ex));
+      return !isCancelled && !isReturn && !isExcluded;
     });
-    const cancelledCount = rows.filter(r => String(r[cancelKey]).trim() !== '0').length;
-    const returnCount    = rows.filter(r => String(r[detailKey]).trim() === '2').length;
-    log(`✅ 有効取引: ${valid.length.toLocaleString()}件（取消${cancelledCount}件・返品${returnCount}件を除外済）`);
+    const returnCount   = detailKey ? rows.filter(r => String(r[detailKey]).trim() === '2').length : 0;
+    const excludedCount = rows.filter(r => EXCLUDED_PRODUCTS.some(ex => (r['商品名'] || '').includes(ex))).length;
+    log(`✅ 有効取引: ${valid.length.toLocaleString()}件（返品${returnCount}件・除外商品${excludedCount}件を除外済）`);
 
     const dateKey = '取引日時';
     const sampleDate = new Date(valid[0][dateKey]);
@@ -403,7 +406,6 @@ async function runCalc() {
     const daysInMonth = new Date(year, month, 0).getDate();
 
     for (const storeId of storeIds) {
-      // 店舗ID=1かつCSV内の店舗が1種類のみ → 京都店と判定
       const isKyoto = storeId === KYOTO_STORE_ID && storeIds.length === 1;
       const storeName = isKyoto ? KYOTO_STORE_NAME : (STORE_NAMES[storeId] || `店舗${storeId}`);
       const storeRows = valid.filter(r => parseInt(r['店舗ID']) === storeId);
@@ -468,16 +470,19 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
       if (deptRows.length === 0) continue;
 
       const label = dept === 'CBDAYS' ? 'CBDAYS (10%)' : `${dept} (1%)`;
-      // 商品名＋販売単価の組み合わせでグループ化（割引違いを別行で表示）
+      // 商品名＋販売単価＋割引率の組み合わせでグループ化
       const productKeys = [];
       const seen = new Map();
       for (const r of deptRows) {
         const unitDisc = parseFloat(r['単品割引'] || 0);
         const subtotalDisc = parseFloat(r['小計割引率'] || 0);
         const key = r['商品名'] + '__' + r['販売単価'] + '__' + unitDisc + '__' + subtotalDisc;
-        if (!seen.has(key)) { seen.set(key, true); productKeys.push({ name: r['商品名'], price: parseFloat(r['販売単価'])||0, unitDisc, subtotalDisc }); }
+        if (!seen.has(key)) {
+          seen.set(key, true);
+          productKeys.push({ name: r['商品名'], price: parseFloat(r['販売単価'])||0, unitDisc, subtotalDisc });
+        }
       }
-      productKeys.sort((a,b) => a.name.localeCompare(b.name, 'ja') || a.price - b.price || a.unitDisc - b.unitDisc || a.subtotalDisc - b.subtotalDisc);
+      productKeys.sort((a,b) => a.name.localeCompare(b.name, 'ja') || a.price - b.price);
       const productEndRows = [];
 
       for (const { name: prod, price, unitDisc, subtotalDisc } of productKeys) {
@@ -488,10 +493,7 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
           (parseFloat(r['小計割引率']||0)) === subtotalDisc
         );
         const totalDisc = unitDisc > 0 ? unitDisc : subtotalDisc;
-        let discLabel = '';
-        if (totalDisc > 0) {
-          discLabel = `（${Math.round(totalDisc)}%OFF）`;
-        }
+        const discLabel = totalDisc > 0 ? `（${Math.round(totalDisc)}%OFF）` : '';
         const displayName = prod + discLabel;
         const actualPrice = totalDisc > 0 ? Math.round(price * (1 - totalDisc/100)) : price;
         const row = [label, displayName, actualPrice];
@@ -505,8 +507,8 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
           totalQty += qty;
           totalSales += dayRows.reduce((s,r) => {
             const base = parseFloat(r['値引き後計']||0);
-            const discRate = parseFloat(r['小計割引率']||0);
-            return s + (discRate > 0 ? base * (1 - discRate/100) : base);
+            const disc = parseFloat(r['小計割引率']||0);
+            return s + (disc > 0 ? base * (1 - disc/100) : base);
           }, 0);
         }
         row.push(totalQty);
@@ -515,7 +517,7 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
         productEndRows.push(wsData.length);
       }
 
-      // 各商品行のインセン額（最後の列）を合計
+      // 小計：各商品行のインセン額を直接合算
       const subtotalInsen = productEndRows.reduce((s, r) => {
         return s + (Number(wsData[r-1][wsData[r-1].length-1]) || 0);
       }, 0);
@@ -523,6 +525,7 @@ function buildWorkbook(targetRows, staffs, storeName, year, month, daysInMonth, 
       sectionSubtotals[dept] = subtotalInsen; // 金額を直接保存
     }
 
+    // 合計：各部門の小計を直接合算
     const grandTotal = Object.values(sectionSubtotals).reduce((s, v) => s + v, 0);
     wsData.push(['当月インセンティブ合計', '', '', ...Array(daysInMonth).fill(null), grandTotal, null]);
 
