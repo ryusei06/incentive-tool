@@ -276,7 +276,7 @@ async function runCalc() {
         const kyotoRows   = targetRows.filter(r => !OKINAWA_STAFFS.includes(r['スタッフ名']));
 
         if (okinawaRows.length > 0) {
-          const staffs    = [...new Set(okinawaRows.map(r => r['スタッフ名']).filter(Boolean))].sort();
+          const staffs    = [...new Set(okinawaRows.map(r => r['スタッフ名']).filter(s => s && !s.replace(/[\u0027\u2018\u2019]/g,'').trim().startsWith('Im FREE') && s.trim() !== ''))].sort();
           const storeName = STORE_NAMES[1];
           const { wb, totalInsen } = buildWorkbook(okinawaRows, staffs, storeName, daysInMonth, monthStr);
           generatedFiles.push({ wb, filename: 'インセンティブ_沖縄国際通り店_' + monthStr + '.xlsx', storeName, staffCount: staffs.length, totalInsen });
@@ -284,7 +284,7 @@ async function runCalc() {
         }
 
         if (kyotoRows.length > 0) {
-          const staffs = [...new Set(kyotoRows.map(r => r['スタッフ名']).filter(Boolean))].sort();
+          const staffs = [...new Set(kyotoRows.map(r => r['スタッフ名']).filter(s => s && !s.replace(/[\u0027\u2018\u2019]/g,'').trim().startsWith('Im FREE') && s.trim() !== ''))].sort();
           const { wb, totalInsen } = buildWorkbook(kyotoRows, staffs, KYOTO_STORE_NAME, daysInMonth, monthStr);
           generatedFiles.push({ wb, filename: 'インセンティブ_ADD_CBD_KYOTO_' + monthStr + '.xlsx', storeName: KYOTO_STORE_NAME, staffCount: staffs.length, totalInsen });
           log('  ✅ ' + KYOTO_STORE_NAME + ': ' + staffs.length + '名 / ¥' + totalInsen.toLocaleString());
@@ -292,7 +292,7 @@ async function runCalc() {
 
       } else {
         const storeName = STORE_NAMES[storeId] || ('店舗' + storeId);
-        const staffs    = [...new Set(targetRows.map(r => r['スタッフ名']).filter(Boolean))].sort();
+        const staffs    = [...new Set(targetRows.map(r => r['スタッフ名']).filter(s => s && !s.replace(/[\u0027\u2018\u2019]/g,'').trim().startsWith('Im FREE') && s.trim() !== ''))].sort();
         const { wb, totalInsen } = buildWorkbook(targetRows, staffs, storeName, daysInMonth, monthStr);
         generatedFiles.push({ wb, filename: 'インセンティブ_' + storeName + '_' + monthStr + '.xlsx', storeName, staffCount: staffs.length, totalInsen });
         log('  ✅ ' + storeName + ': ' + staffs.length + '名 / ¥' + totalInsen.toLocaleString());
