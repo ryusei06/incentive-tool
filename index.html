@@ -243,7 +243,10 @@ async function runCalc() {
 
     const valid = rows.filter(r => {
       const isCancelled = String(r[cancelKey]).trim() !== '0';
-      const isReturn    = detailKey && String(r[detailKey]).trim() === '2';
+      // 取引明細区分がある場合は返品(2)を除外、ない場合は返品数量合計で判別
+      const isReturn = detailKey
+        ? String(r[detailKey]).trim() === '2'
+        : parseFloat(r['返品数量合計'] || 0) > 0;
       const isExcluded  = EXCLUDED_PRODUCTS.some(ex => (r['商品名'] || '').includes(ex));
       return !isCancelled && !isReturn && !isExcluded;
     });
@@ -369,9 +372,13 @@ function buildWorkbook(targetRows, staffs, storeName, daysInMonth, monthStr) {
           row.push(qty > 0 ? qty : null);
           totalQty += qty;
           totalSales += dayRows.reduce((s,r) => {
+            // 値引き後計があればそれを使用、なければ販売単価×数量で計算
             const base = parseFloat(r['値引き後計']||0);
+            const price = parseFloat(r['販売単価']||0);
+            const qty = parseFloat(r['数量']||0);
+            const sales = base > 0 ? base : price * qty;
             const disc = parseFloat(r['小計割引率']||0);
-            return s + (disc > 0 ? base * (1 - disc/100) : base);
+            return s + (disc > 0 ? sales * (1 - disc/100) : sales);
           }, 0);
         }
 
