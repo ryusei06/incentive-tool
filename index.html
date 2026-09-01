@@ -142,11 +142,8 @@ const STORE_NAMES = {
   10: "Im FREE 浅草店",
 };
 
-// 沖縄店スタッフ一覧（店舗ID=1のCSVで沖縄/京都を判別）
-const OKINAWA_STAFFS = [
-  '金子順一', '渡嘉敷 春香', '大津巧海', '金城\u3000百音', '横山 桃子', '山本 圭',
-];
-const KYOTO_STORE_NAME = 'ADD CBD KYOTO';
+// 沖縄店スタッフ（京都店閉店のため店舗ID=1は沖縄店固定）
+const OKINAWA_STAFFS = [];
 
 let csvFile = null;
 let generatedFiles = [];
@@ -273,27 +270,8 @@ async function runCalc() {
       const targetRows = storeRows.filter(r => INCENTIVE_RULES[r['部門名']] !== undefined);
       if (targetRows.length === 0) continue;
 
-      if (storeId === 1) {
-        // 店舗ID=1：スタッフ名で沖縄/京都を振り分け
-        const okinawaRows = targetRows.filter(r => OKINAWA_STAFFS.includes(r['スタッフ名']));
-        const kyotoRows   = targetRows.filter(r => !OKINAWA_STAFFS.includes(r['スタッフ名']));
-
-        if (okinawaRows.length > 0) {
-          const staffs    = [...new Set(okinawaRows.map(r => r['スタッフ名']).filter(s => s && s.trim() !== '' && !s.includes('FREE')))].sort();
-          const storeName = STORE_NAMES[1];
-          const { wb, totalInsen } = buildWorkbook(okinawaRows, staffs, storeName, daysInMonth, monthStr);
-          generatedFiles.push({ wb, filename: 'インセンティブ_沖縄国際通り店_' + monthStr + '.xlsx', storeName, staffCount: staffs.length, totalInsen });
-          log('  ✅ ' + storeName + ': ' + staffs.length + '名 / ¥' + totalInsen.toLocaleString());
-        }
-
-        if (kyotoRows.length > 0) {
-          const staffs = [...new Set(kyotoRows.map(r => r['スタッフ名']).filter(s => s && s.trim() !== '' && !s.includes('FREE')))].sort();
-          const { wb, totalInsen } = buildWorkbook(kyotoRows, staffs, KYOTO_STORE_NAME, daysInMonth, monthStr);
-          generatedFiles.push({ wb, filename: 'インセンティブ_ADD_CBD_KYOTO_' + monthStr + '.xlsx', storeName: KYOTO_STORE_NAME, staffCount: staffs.length, totalInsen });
-          log('  ✅ ' + KYOTO_STORE_NAME + ': ' + staffs.length + '名 / ¥' + totalInsen.toLocaleString());
-        }
-
-      } else {
+      {
+        // 京都店閉店のため店舗ID=1は沖縄店として処理
         const storeName = STORE_NAMES[storeId] || ('店舗' + storeId);
         const staffs    = [...new Set(targetRows.map(r => r['スタッフ名']).filter(s => s && s.trim() !== '' && !s.includes('FREE')))].sort();
         const { wb, totalInsen } = buildWorkbook(targetRows, staffs, storeName, daysInMonth, monthStr);
